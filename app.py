@@ -1,5 +1,6 @@
 import streamlit as st
 import json
+from datetime import datetime
 from classifier import classify_po
 
 st.set_page_config(page_title="PO category classifier", layout="centered")
@@ -27,6 +28,9 @@ st.markdown(
 
 if "po_description" not in st.session_state:
     st.session_state.po_description = ""
+
+if "history" not in st.session_state:
+    st.session_state.history = []
 
 sample_options = {
     "IT hardware": "Purchase of 20 laptop chargers and 10 USB-C docking stations for IT rollout",
@@ -58,8 +62,41 @@ if st.button("Classify"):
         with st.spinner("Classifying..."):
             result = classify_po(po_description, supplier)
 
-        try:
-            st.json(json.loads(result))
-        except Exception:
+        parsed = None
+        if isinstance(result, (dict, list)):
+            parsed = result
+        else:
+            try:
+                parsed = json.loads(result)
+            except Exception:
+                parsed = None
+
+        st.subheader("Result")
+        if parsed is not None:
+            st.json(parsed)
+        else:
             st.error("Invalid model response")
             st.text(result)
+
+        st.session_state.history.insert(
+            0,
+            {
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "description": po_description.strip(),
+                "supplier": supplier.strip(),
+                "result": parsed if parsed is not None else result,
+            },
+        )
+        st.session_state.history = st.session_state.history[:5]
+
+if st.session_state.history:
+    st.subheader("Recent history")
+    for item in st.session_state.history:
+        st.markdown(f"**{item['timestamp']}**")
+        st.text(f"Description: {item['description']}")
+        if item["supplier"]:
+            st.text(f"Supplier: {item['supplier']}")
+        if isinstance(item["result"], (dict, list)):
+            st.json(item["result"])
+        else:
+            st.text(item["result"])
