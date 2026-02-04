@@ -20,4 +20,5 @@ if st.button("Classify"):
             st.json(json.loads(result))
         except Exception:
             st.error("Invalid model response")
+
             st.text(result)
