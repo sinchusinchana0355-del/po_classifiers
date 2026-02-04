@@ -26,4 +26,5 @@ Supplier:
         ]
     )
 
-    return response.choices[0].message.content5
+
+    return response.choices[0].message.content
