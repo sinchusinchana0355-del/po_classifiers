@@ -1,5 +1,6 @@
 import streamlit as st
 import json
+from datetime import datetime
 from classifier import classify_po
 
 st.set_page_config(page_title="PO category classifier", layout="centered")
@@ -28,21 +29,15 @@ st.markdown(
 if "po_description" not in st.session_state:
     st.session_state.po_description = ""
 
-sample_options = {
-    "IT hardware": "Purchase of 20 laptop chargers and 10 USB-C docking stations for IT rollout",
-    "Office supplies": "Order of 15 boxes of printer paper and 50 blue ballpoint pens",
-    "Facilities": "Monthly HVAC maintenance service for headquarters building",
-}
+if "history" not in st.session_state:
+    st.session_state.history = []
 
-if st.button("Use sample input 1"):
-    st.session_state.po_description = sample_options["IT hardware"]
+sample_input = (
+    "Purchase of 20 laptop chargers and 10 USB-C docking stations for IT rollout"
+)
 
-if st.button("Use sample input 2"):
-    st.session_state.po_description = sample_options["Office supplies"]
-
-selected_sample = st.selectbox("Sample inputs", list(sample_options.keys()))
-if st.button("Apply selected sample"):
-    st.session_state.po_description = sample_options[selected_sample]
+if st.button("Use sample input"):
+    st.session_state.po_description = sample_input
 
 po_description = st.text_area(
     "PO description",
@@ -58,8 +53,55 @@ if st.button("Classify"):
         with st.spinner("Classifying..."):
             result = classify_po(po_description, supplier)
 
-        try:
-            st.json(json.loads(result))
-        except Exception:
+        parsed = None
+        if isinstance(result, (dict, list)):
+            parsed = result
+        else:
+            try:
+                parsed = json.loads(result)
+            except Exception:
+                parsed = None
+
+        st.subheader("Result")
+        if parsed is not None:
+            st.json(parsed)
+        else:
             st.error("Invalid model response")
             st.text(result)
+
+        st.session_state.history.insert(
+            0,
+            {
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "description": po_description.strip(),
+                "supplier": supplier.strip(),
+                "result": parsed if parsed is not None else result,
+            },
+        )
+        st.session_state.history = st.session_state.history[:5]
+
+if st.session_state.history:
+    if st.button("Show last result"):
+        last = st.session_state.history[0]
+        st.subheader("Last result")
+        st.text(f"Description: {last['description']}")
+        if last["supplier"]:
+            st.text(f"Supplier: {last['supplier']}")
+        if isinstance(last["result"], (dict, list)):
+            st.json(last["result"])
+        else:
+            st.text(last["result"])
+
+    if st.button("Clear history"):
+        st.session_state.history = []
+
+    st.subheader("Recent history")
+    for item in st.session_state.history:
+        st.markdown(f"**{item['timestamp']}**")
+        st.text(f"Description: {item['description']}")
+        if item["supplier"]:
+            st.text(f"Supplier: {item['supplier']}")
+        if isinstance(item["result"], (dict, list)):
+            st.json(item["result"])
+        else:
+            st.text(item["result"])
