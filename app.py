@@ -25,7 +25,30 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-po_description = st.text_area("PO description", height=120)
+if "po_description" not in st.session_state:
+    st.session_state.po_description = ""
+
+sample_options = {
+    "IT hardware": "Purchase of 20 laptop chargers and 10 USB-C docking stations for IT rollout",
+    "Office supplies": "Order of 15 boxes of printer paper and 50 blue ballpoint pens",
+    "Facilities": "Monthly HVAC maintenance service for headquarters building",
+}
+
+if st.button("Use sample input 1"):
+    st.session_state.po_description = sample_options["IT hardware"]
+
+if st.button("Use sample input 2"):
+    st.session_state.po_description = sample_options["Office supplies"]
+
+selected_sample = st.selectbox("Sample inputs", list(sample_options.keys()))
+if st.button("Apply selected sample"):
+    st.session_state.po_description = sample_options[selected_sample]
+
+po_description = st.text_area(
+    "PO description",
+    height=120,
+    key="po_description",
+)
 supplier = st.text_input("Supplier (optional)")
 
 if st.button("Classify"):
